@@ -5,7 +5,7 @@ go 1.25.7
 toolchain go1.25.13
 
 require (
-	github.com/openshift-pipelines/agenttask v0.0.0-poc.1
+	github.com/openshift-pipelines/agenttask v0.0.0-poc.1.0.20260902214946-2254e31489f6
 	github.com/openshift/lightspeed-agentic-operator/api v0.0.0-20260831064954-e4506ee41ddb
 	github.com/tektoncd/pipeline v1.0.2
 	k8s.io/apimachinery v0.35.3
@@ -101,5 +101,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
-
-replace github.com/openshift-pipelines/agenttask => github.com/waveywaves/agenttask v0.0.0-poc.1.0.20260902205534-5febac72c06a
