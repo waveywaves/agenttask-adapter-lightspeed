@@ -1,65 +1,80 @@
 # Lightspeed AgentTask Adapter
 
-Experimental AgentTask Adapter for mapping a Tekton `CustomRun` to an OpenShift
-Lightspeed `AgenticRun`. It is being prototyped alongside
-[TEP-0170: AgentTask and Pluggable Agent Execution](https://github.com/tektoncd/community/pull/1263).
+Experimental controller mapping a Tekton `AgentTask` `CustomRun` to an
+analysis-only OpenShift Lightspeed `AgenticRun`. It is developed alongside
+[TEP-0170](https://github.com/tektoncd/community/pull/1263).
 
-This repository is an experimental PoC scaffold. TEP-0170 is proposed, the
-shared API is unstable, and the adapter is not usable yet. Publication does not
-imply TEP acceptance, API compatibility, or product support.
+TEP-0170 remains proposed. The API is unstable and this repository provides no
+compatibility or product-support guarantee.
 
-## Current slice
+## Prototype scope
 
-Implemented:
+The controller currently:
 
-- a fail-closed shell that compiles against the shared `AgentTaskAdapter`
-  interface and selects `lightspeed.openshift.io/agenticrun`;
-- the two bounded analysis outcomes derived from an already validated
-  `actionRequired` boolean.
+- accepts only the fixed `analysis-v1` profile, a string `request` param, and
+  the `outcome` and `analysis-result-name` results;
+- restricts the native target to the `CustomRun` namespace;
+- rejects workspaces and custom service accounts;
+- deterministically creates or adopts one same-namespace `AgenticRun` per
+  attempt and persists its UID before acceptance;
+- observes native analysis approval without modifying it;
+- maps terminal `AnalysisResult.status.actionRequired` to a bounded result and
+  returns a credential-free Kubernetes reference;
+- deletes only the correlated `AgenticRun` during cancellation and waits for
+  `NotFound` before confirming cleanup.
 
-Not implemented:
+The trusted profile selects the cluster-scoped `Agent/tekton-analysis`. Cluster
+administrators must configure that Agent with analysis-only, read-only tools.
+Prompt text is not an authorization boundary.
 
-- a controller or Kubernetes deployment;
-- `AgenticRun` creation or adoption;
-- approval observation; this adapter will not mutate native approvals;
-- `AnalysisResult` lookup or ownership validation;
-- cancellation or cleanup;
-- status writing, claiming, restart recovery, RBAC, or conformance tests.
+This remains a PoC. It omits retries, remote definitions, distributed claiming,
+cleanup deadlines, metrics, conformance certification, and production support.
+It uses one replica and one namespace.
 
-Every lifecycle method returns `ErrNotImplemented` without creating or mutating
-anything. A future PoC deployment will use one active controller leader and
-will not implement distributed adapter claiming. This scaffold is therefore
-**not TEP-0170 conformant**.
+## Prerequisites
 
-## Entry gates
+- Tekton Pipelines with `CustomRun` support;
+- the `AgentTask` CRD from
+  [`openshift-pipelines/agenttask`](https://github.com/openshift-pipelines/agenttask);
+- OpenShift Lightspeed Agentic Operator API compatible with commit
+  `e4506ee41ddb099d80cdb78ddd87287fac20853f`;
+- a cluster-scoped `Agent` named `tekton-analysis` and an appropriate approval
+  policy.
 
-Do not import the Lightspeed API or implement its lifecycle until all of these
-are resolved:
-
-1. select a supported Lightspeed release and Go API module version;
-2. confirm that an analysis-only advisory run reaches `Completed` instead of
-   remaining `Proposed`;
-3. confirm the public signal for waiting on `AgenticRunApproval`;
-4. confirm DELETE as the supported per-run cancellation operation and define
-   when cleanup is complete;
-5. locate the documented `lightspeed-component-owner` role or approve the
-   narrower namespaced Role from the PoC plan.
-
-The provisional research commits are
-`3e7b1ac9027aab853e395876074533d0216da1ac` and
-`e4506ee41ddb099d80cdb78ddd87287fac20853f`; neither is a supported dependency
-pin.
+The adapter pins an unreleased Lightspeed API pseudo-version and requires Go
+1.25.7. This pin must move to a supported release before any compatibility
+claim.
 
 ## Development
 
+Until the next experimental `agenttask` module tag is published, test both
+repositories in one Go workspace:
+
 ```sh
-make verify
-make test
+go work init ./agenttask ./agenttask-adapter-lightspeed
+go test ./agenttask/... ./agenttask-adapter-lightspeed/...
 ```
 
-`go.mod` pins an experimental `github.com/openshift-pipelines/agenttask`
-version. Update that pin deliberately with any matching adapter contract
-change.
+Run the local Kind vertical slice with:
+
+```sh
+make e2e-kind
+```
+
+It installs Tekton, uses minimal test doubles for the three Agentic API CRDs,
+then proves `PipelineRun` to `CustomRun` to `AgenticRun` to `AnalysisResult` to
+downstream Task result consumption and correlated cancellation cleanup. It does
+not replace a live Agentic Operator compatibility test.
+
+Build the controller and manifests with `ko`:
+
+```sh
+ko apply -k config
+kubectl create -f examples/lightspeed-analysis.yaml
+```
+
+The namespaced Role intentionally cannot read Secrets, modify
+`AgenticRunApproval`, impersonate identities, or mutate native status.
 
 ## License
 

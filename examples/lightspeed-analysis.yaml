@@ -1,0 +1,55 @@
+apiVersion: agent.tekton.dev/v1alpha1
+kind: AgentTask
+metadata:
+  name: lightspeed-analysis
+  namespace: agenttask-system
+spec:
+  description: Run an analysis only Lightspeed workflow.
+  params:
+    - name: request
+      type: string
+  results:
+    - name: outcome
+      description: Whether the analysis recommends action.
+    - name: analysis-result-name
+      description: The native AnalysisResult resource name.
+  adapterRef:
+    name: lightspeed.openshift.io/agenticrun
+    params:
+      - name: profile
+        value: analysis-v1
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: lightspeed-agenttask-poc
+  namespace: agenttask-system
+spec:
+  pipelineSpec:
+    tasks:
+      - name: analysis
+        taskRef:
+          apiVersion: agent.tekton.dev/v1alpha1
+          kind: AgentTask
+          name: lightspeed-analysis
+        params:
+          - name: request
+            value: Analyze why PipelineRun example failed. Do not modify cluster resources.
+      - name: report
+        runAfter:
+          - analysis
+        params:
+          - name: outcome
+            value: $(tasks.analysis.results.outcome)
+          - name: analysis-result-name
+            value: $(tasks.analysis.results.analysis-result-name)
+        taskSpec:
+          params:
+            - name: outcome
+            - name: analysis-result-name
+          steps:
+            - name: print
+              image: docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+              script: |
+                printf 'outcome=%s analysisResult=%s\n' \
+                  "$(params.outcome)" "$(params.analysis-result-name)"
