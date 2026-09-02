@@ -1,0 +1,35 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lightspeed-agenttask-adapter
+  namespace: agenttask-system
+rules:
+  - apiGroups: ["agent.tekton.dev"]
+    resources: ["agenttasks"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["customruns"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["customruns/status", "customruns/finalizers"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: ["agentic.openshift.io"]
+    resources: ["agenticruns"]
+    verbs: ["create", "delete", "get", "list", "watch"]
+  - apiGroups: ["agentic.openshift.io"]
+    resources: ["agenticrunapprovals", "analysisresults"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lightspeed-agenttask-adapter
+  namespace: agenttask-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: lightspeed-agenttask-adapter
+subjects:
+  - kind: ServiceAccount
+    name: lightspeed-agenttask-adapter
+    namespace: agenttask-system
