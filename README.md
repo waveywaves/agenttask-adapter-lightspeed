@@ -35,7 +35,9 @@ the selected Agent determine native execution permissions instead.
 
 This remains a PoC. It omits retries, remote definitions, distributed claiming,
 cleanup deadlines, metrics, conformance certification, and production support.
-It uses one replica and one namespace.
+It uses one replica and one namespace. Requiring workload and control-plane
+resources to share that namespace is a known architecture downside; see
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Prerequisites
 
@@ -47,9 +49,16 @@ It uses one replica and one namespace.
 - a cluster-scoped `Agent` named `tekton-analysis` and an appropriate approval
   policy.
 
-The tested Agentic Operator currently places sandbox inputs and results in its
-configured namespace. Deploy it in the same namespace as this adapter and its
-AgentTask CustomRuns until the operator supports run namespaces end to end.
+### Required co-location
+
+The manifests use `agenttask-system`. Configure the Agentic Operator to use that
+same namespace, and create the adapter's AgentTasks and PipelineRuns there. The
+tested operator places sandbox inputs and results in its configured namespace,
+while the adapter creates AgenticRuns and reads results in the CustomRun
+namespace. Cross-namespace use is therefore unsupported and can leave runs
+unobserved. This is a prototype limitation, not a recommended multi-tenant
+layout; see [`ARCHITECTURE.md`](ARCHITECTURE.md) for the tradeoff and future
+options.
 
 The adapter pins an unreleased Lightspeed API pseudo-version and requires Go
 1.25.7. This pin must move to a supported release before any compatibility
