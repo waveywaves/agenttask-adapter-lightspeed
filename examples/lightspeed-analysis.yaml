@@ -25,6 +25,8 @@ metadata:
   name: lightspeed-agenttask-poc
   namespace: agenttask-system
 spec:
+  taskRunTemplate:
+    serviceAccountName: default
   pipelineSpec:
     tasks:
       - name: analysis

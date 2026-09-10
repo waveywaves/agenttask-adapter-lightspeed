@@ -32,12 +32,41 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
+func TestInvalidInvocationReportsSafeAdapterMessage(t *testing.T) {
+	task := testTask()
+	task.Spec.AdapterRef.Params[0].Value.StringVal = "unsupported"
+	run := testCustomRun()
+	run.Spec.CustomRef = &pipelinev1beta1.TaskRef{
+		APIVersion: task.APIVersion, Kind: "AgentTask", Name: task.Name,
+	}
+	c := fake.NewClientBuilder().
+		WithScheme(testScheme(t)).
+		WithStatusSubresource(&pipelinev1beta1.CustomRun{}).
+		WithObjects(task, run).
+		Build()
+	reconciler := &framework.Reconciler{Client: c, Adapter: &Adapter{Client: c}}
+	key := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(run)}
+	if _, err := reconciler.Reconcile(context.Background(), key); err != nil {
+		t.Fatalf("Reconcile() error = %v", err)
+	}
+
+	var invalid pipelinev1beta1.CustomRun
+	if err := c.Get(context.Background(), key.NamespacedName, &invalid); err != nil {
+		t.Fatalf("get CustomRun: %v", err)
+	}
+	condition := invalid.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil || condition.Reason != "InvalidAgentTask" || condition.Message != "adapterRef profile must be analysis-v1" {
+		t.Fatalf("CustomRun condition = %#v", condition)
+	}
+}
+
 func TestCustomRunToAgenticRunVerticalSlice(t *testing.T) {
 	task := testTask()
 	run := testCustomRun()
 	run.Spec.CustomRef = &pipelinev1beta1.TaskRef{
 		APIVersion: task.APIVersion, Kind: "AgentTask", Name: task.Name,
 	}
+	run.Spec.ServiceAccountName = "default"
 	c := fake.NewClientBuilder().
 		WithScheme(testScheme(t)).
 		WithStatusSubresource(&pipelinev1beta1.CustomRun{}, &agenticv1alpha1.AgenticRun{}, &agenticv1alpha1.AnalysisResult{}).

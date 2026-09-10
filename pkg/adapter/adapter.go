@@ -83,25 +83,27 @@ func (a *Adapter) Validate(_ context.Context, task *agentv1alpha1.AgentTask, run
 		return fmt.Errorf("agent task and custom run are required")
 	}
 	if task.Namespace != run.Namespace {
-		return fmt.Errorf("agent task and custom run must share a namespace")
+		return framework.NewInvalidInvocationError("agent task and custom run must share a namespace")
 	}
 	if len(task.Spec.Workspaces) != 0 || len(run.Spec.Workspaces) != 0 {
 		return fmt.Errorf("%w: profile %s", framework.ErrWorkspaceNotSupported, ProfileAnalysis)
 	}
 	if run.Spec.ServiceAccountName != "" && run.Spec.ServiceAccountName != "default" {
-		return fmt.Errorf("profile %s does not map CustomRun service accounts", ProfileAnalysis)
+		return framework.NewInvalidInvocationError(fmt.Sprintf("profile %s requires the default CustomRun service account", ProfileAnalysis))
 	}
 	if err := validateProfile(task); err != nil {
-		return err
+		return framework.NewInvalidInvocationError(err.Error())
 	}
 	if err := validateParams(task); err != nil {
-		return err
+		return framework.NewInvalidInvocationError(err.Error())
 	}
 	if err := validateResults(task); err != nil {
-		return err
+		return framework.NewInvalidInvocationError(err.Error())
 	}
-	_, err := requestValue(run)
-	return err
+	if _, err := requestValue(run); err != nil {
+		return framework.NewInvalidInvocationError(err.Error())
+	}
+	return nil
 }
 
 func (a *Adapter) Reconcile(ctx context.Context, request framework.Request) (framework.Observation, error) {

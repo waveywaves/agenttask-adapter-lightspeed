@@ -6,7 +6,7 @@ toolchain go1.25.13
 
 require (
 	github.com/openshift-pipelines/agenttask v0.0.0-poc.1.0.20260902214946-2254e31489f6
-	github.com/openshift/lightspeed-agentic-operator/api v0.0.0-20260831064954-e4506ee41ddb
+	github.com/openshift/lightspeed-agentic-operator/api v0.0.0-20260909134734-b4416bc2fe7a
 	github.com/tektoncd/pipeline v1.0.2
 	k8s.io/apimachinery v0.35.3
 	k8s.io/client-go v0.35.3

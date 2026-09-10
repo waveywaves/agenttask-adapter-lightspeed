@@ -14,7 +14,8 @@ The controller currently:
 - accepts only the fixed `analysis-v1` profile, a string `request` param, and
   the `outcome` and `analysis-result-name` results;
 - restricts the native target to the `CustomRun` namespace;
-- rejects workspaces and custom service accounts;
+- rejects workspaces and custom `CustomRun` service accounts because they do
+  not map into the fixed native profile;
 - deterministically creates or adopts one same-namespace `AgenticRun` per
   attempt and persists its UID before acceptance;
 - observes native analysis approval without modifying it;
@@ -27,6 +28,11 @@ The trusted profile selects the cluster-scoped `Agent/tekton-analysis`. Cluster
 administrators must configure that Agent with analysis-only, read-only tools.
 Prompt text is not an authorization boundary.
 
+The example explicitly selects the `default` ServiceAccount so platform defaults
+such as OpenShift Pipelines' `pipeline` ServiceAccount do not imply permissions
+that this adapter cannot map. The Agentic Operator's sandbox ServiceAccount and
+the selected Agent determine native execution permissions instead.
+
 This remains a PoC. It omits retries, remote definitions, distributed claiming,
 cleanup deadlines, metrics, conformance certification, and production support.
 It uses one replica and one namespace.
@@ -36,10 +42,14 @@ It uses one replica and one namespace.
 - Tekton Pipelines with `CustomRun` support;
 - the `AgentTask` CRD from
   [`openshift-pipelines/agenttask`](https://github.com/openshift-pipelines/agenttask);
-- OpenShift Lightspeed Agentic Operator API compatible with commit
-  `e4506ee41ddb099d80cdb78ddd87287fac20853f`;
+- OpenShift Lightspeed Agentic Operator compatible with commit
+  `b4416bc2fe7a0c28d253bc21c8a091db5cc766c5`;
 - a cluster-scoped `Agent` named `tekton-analysis` and an appropriate approval
   policy.
+
+The tested Agentic Operator currently places sandbox inputs and results in its
+configured namespace. Deploy it in the same namespace as this adapter and its
+AgentTask CustomRuns until the operator supports run namespaces end to end.
 
 The adapter pins an unreleased Lightspeed API pseudo-version and requires Go
 1.25.7. This pin must move to a supported release before any compatibility
@@ -66,7 +76,8 @@ then proves `PipelineRun` to `CustomRun` to `AgenticRun` to `AnalysisResult` to
 downstream Task result consumption and correlated cancellation cleanup. It does
 not replace a live Agentic Operator compatibility test.
 
-Build the controller and manifests with `ko`:
+No prebuilt adapter image is published yet. Build the controller and manifests
+with `ko`:
 
 ```sh
 ko apply -k config
